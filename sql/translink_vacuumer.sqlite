@@ -1,0 +1,175 @@
+
+-- set for versioning
+PRAGMA user_version=13031100;
+--------------------yymmdd##
+
+-- drop tables we don't need
+DROP TABLE if exists gtfs_directions;
+DROP TABLE if exists gtfs_fare_attributes;
+DROP TABLE if exists gtfs_fare_rules;
+DROP TABLE if exists gtfs_feed_info;
+DROP TABLE if exists gtfs_frequencies;
+DROP TABLE if exists gtfs_location_types;
+DROP TABLE if exists gtfs_payment_methods;
+DROP TABLE if exists gtfs_pickup_dropoff_types;
+DROP TABLE if exists gtfs_route_types;
+DROP TABLE if exists gtfs_transfer_types;
+DROP TABLE if exists service_combinations;
+DROP TABLE if exists service_combo_ids;
+
+DROP TABLE if exists gtfs_agency;
+--DROP TABLE if exists gtfs_shapes;
+DROP TABLE if exists gtfs_transfers;
+
+-- create temporary id conversion tables
+CREATE TABLE gtfs_service_id_temp (
+    service_id text PRIMARY KEY
+);
+INSERT INTO gtfs_service_id_temp SELECT service_id FROM gtfs_calendar;
+
+CREATE TABLE gtfs_routes_id_temp (
+    route_id text PRIMARY KEY
+);
+INSERT INTO gtfs_routes_id_temp SELECT route_id FROM gtfs_routes;
+
+CREATE TABLE gtfs_stops_id_temp (
+    stop_id text PRIMARY KEY
+);
+INSERT INTO gtfs_stops_id_temp SELECT stop_id FROM gtfs_stops;
+
+CREATE TABLE gtfs_trips_id_temp (
+    trip_id text PRIMARY KEY
+);
+INSERT INTO gtfs_trips_id_temp SELECT trip_id FROM gtfs_trips;
+
+CREATE TABLE gtfs_blocks_id_temp (
+    block_id text PRIMARY KEY
+);
+INSERT INTO gtfs_blocks_id_temp SELECT DISTINCT block_id FROM gtfs_trips;
+
+CREATE TABLE gtfs_shapes_id_temp (
+    shape_id text PRIMARY KEY
+);
+INSERT INTO gtfs_shapes_id_temp SELECT DISTINCT shape_id FROM gtfs_shapes;
+
+
+-- create a table for headsigns to save space
+CREATE TABLE gtfs_trip_headsigns (
+    trip_headsign text
+);
+INSERT INTO gtfs_trip_headsigns SELECT DISTINCT trip_headsign FROM gtfs_trips;
+
+-- begin table reductions and id conversions
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_calendar rename to gtfs_calendar_old;
+CREATE TABLE gtfs_calendar (
+  service_id   INTEGER PRIMARY KEY,--PRIMARY KEY,
+  monday int NOT NULL, --NOT NULL,
+  tuesday int NOT NULL, --NOT NULL,
+  wednesday    int NOT NULL, --NOT NULL,
+  thursday     int NOT NULL, --NOT NULL,
+  friday int NOT NULL, --NOT NULL,
+  saturday     int NOT NULL, --NOT NULL,
+  sunday int NOT NULL, --NOT NULL,
+  start_date   date NOT NULL, --NOT NULL,
+  end_date     date NOT NULL --NOT NULL
+);
+INSERT INTO gtfs_calendar SELECT st.rowid, co.monday, co.tuesday, co.wednesday, co.thursday, co.friday, co.saturday, co.sunday, co.start_date, co.end_date FROM gtfs_calendar_old co, gtfs_service_id_temp st WHERE co.service_id=st.service_id;
+DROP TABLE gtfs_calendar_old;
+COMMIT;
+
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_calendar_dates rename to gtfs_calendar_dates_old;
+CREATE TABLE gtfs_calendar_dates (
+  service_id     INTEGER , --REFERENCES gtfs_calendar(service_id),
+  date     date NOT NULL, --NOT NULL,
+  exception_type INTEGER  NOT NULL--NOT NULL
+);
+INSERT INTO gtfs_calendar_dates SELECT st.rowid, co.date, co.exception_type FROM gtfs_calendar_dates_old co, gtfs_service_id_temp st WHERE co.service_id=st.service_id;
+DROP TABLE gtfs_calendar_dates_old;
+COMMIT;
+
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_routes rename to gtfs_routes_old;
+CREATE TABLE gtfs_routes (
+  route_id    INTEGER PRIMARY KEY,--PRIMARY KEY,
+  --agency_id   text , --REFERENCES gtfs_agency(agency_id),
+  route_short_name  TEXT DEFAULT '',
+  route_long_name   TEXT DEFAULT ''
+  --route_type  int --REFERENCES gtfs_route_types(route_type)
+);
+INSERT INTO gtfs_routes SELECT rt.rowid, ro.route_short_name, ro.route_long_name FROM gtfs_routes_old ro, gtfs_routes_id_temp rt WHERE ro.route_type = 3 AND ro.route_id=rt.route_id;
+DROP TABLE gtfs_routes_old;
+COMMIT;
+
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_stop_times rename to gtfs_stop_times_old;
+CREATE TABLE gtfs_stop_times (
+  trip_id INTEGER , --REFERENCES gtfs_trips(trip_id),
+  departure_time INTEGER, -- CHECK (departure_time LIKE '__:__:__'),
+  stop_id INTEGER , --REFERENCES gtfs_stops(stop_id),
+  stop_sequence INTEGER NOT NULL, --NOT NULL,
+  --pickup_type   int , --REFERENCES gtfs_pickup_dropoff_types(type_id),
+  --drop_off_type int , --REFERENCES gtfs_pickup_dropoff_types(type_id),
+
+  FOREIGN KEY (trip_id) REFERENCES gtfs_trips(trip_id),
+  FOREIGN KEY (stop_id) REFERENCES gtfs_stops(stop_id)
+  --CHECK (departure_time LIKE '__:__:__')
+);
+INSERT INTO gtfs_stop_times SELECT tt.rowid, (CAST(SUBSTR(so.departure_time, 1, 2) as INTEGER)*3600 + CAST(SUBSTR(so.departure_time, 4, 2) as INTEGER)*60 + CAST(SUBSTR(so.departure_time, 7, 2) as INTEGER)), st.rowid, so.stop_sequence FROM gtfs_stop_times_old so, gtfs_trips_id_temp tt, gtfs_stops_id_temp st WHERE so.trip_id=tt.trip_id AND so.stop_id=st.stop_id;
+DROP TABLE gtfs_stop_times_old;
+COMMIT;
+
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_stops rename to gtfs_stops_old;
+CREATE TABLE gtfs_stops (
+  stop_id    INTEGER PRIMARY KEY,--PRIMARY KEY,
+  stop_name  TEXT NOT NULL, --NOT NULL,
+  stop_lat   REAL,
+  stop_lon   REAL,
+  --zone_id    int,
+  stop_code  TEXT
+);
+INSERT INTO gtfs_stops SELECT st.rowid, so.stop_desc, so.stop_lat, so.stop_lon, so.stop_code FROM gtfs_stops_old so, gtfs_stops_id_temp st WHERE so.stop_id=st.stop_id;
+DROP TABLE gtfs_stops_old;
+COMMIT;
+
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_trips rename to gtfs_trips_old;
+CREATE TABLE gtfs_trips (
+  route_id INTEGER , --REFERENCES gtfs_routes(route_id),
+  service_id    INTEGER , --REFERENCES gtfs_calendar(service_id),
+  trip_id INTEGER PRIMARY KEY,--PRIMARY KEY,
+  trip_headsign_id INTEGER,
+  direction_id  INTEGER, --NOT NULL --REFERENCES gtfs_directions(direction_id),
+  block_id INTEGER,
+  shape_id INTEGER,
+
+  FOREIGN KEY (route_id) REFERENCES gtfs_routes(route_id)
+);
+INSERT INTO gtfs_trips SELECT rt.rowid, st.rowid, tt.rowid, th.rowid, tro.direction_id, bt.rowid, sht.rowid FROM gtfs_trips_old tro, gtfs_service_id_temp st, gtfs_routes_id_temp rt, gtfs_trips_id_temp tt, gtfs_blocks_id_temp bt, gtfs_trip_headsigns th, gtfs_shapes_id_temp sht WHERE tro.route_id=rt.route_id AND tro.trip_id=tt.trip_id AND tro.block_id=bt.block_id AND tro.service_id=st.service_id AND tro.trip_headsign=th.trip_headsign AND tro.shape_id=sht.shape_id;
+DROP TABLE gtfs_trips_old;
+COMMIT;
+
+BEGIN TRANSACTION;
+ALTER TABLE gtfs_shapes rename to gtfs_shapes_old;
+CREATE TABLE gtfs_shapes (
+  shape_id    INTEGER NOT NULL, --NOT NULL,
+  shape_pt_lat double precision NOT NULL, --NOT NULL,
+  shape_pt_lon double precision NOT NULL, --NOT NULL,
+  shape_pt_sequence int NOT NULL --NOT NULL,
+);
+INSERT INTO gtfs_shapes SELECT st.rowid, so.shape_pt_lat, so.shape_pt_lon, so.shape_pt_sequence FROM gtfs_shapes_old so, gtfs_shapes_id_temp st WHERE so.shape_id=st.shape_id;
+DROP TABLE gtfs_shapes_old;
+COMMIT;
+
+-- drop temporary tables
+DROP TABLE gtfs_service_id_temp;
+DROP TABLE gtfs_routes_id_temp;
+DROP TABLE gtfs_stops_id_temp;
+DROP TABLE gtfs_trips_id_temp;
+DROP TABLE gtfs_blocks_id_temp;
+DROP TABLE gtfs_shapes_id_temp;
+
+-- cleanup
+VACUUM;
