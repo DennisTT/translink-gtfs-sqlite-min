@@ -9,6 +9,12 @@ SQL_STRUCTURE="libs/import/src/gtfs_tables.sqlite"
 SQL_VACUUMER="libs/import/src/vacuumer.sqlite"
 SQL_CUSTOM_VACUUMER="sql/translink_vacuumer.sqlite"
 
+if [ "$1" == "clean" ]; then
+	rm -rf $FEED_FOLDER $OUTPUT_DB $OUTPUT_DB_VACUUMED $OUTPUT_DB_VACUUMED_COMPRESSED
+	echo "cleaned"
+	exit 0
+fi
+
 echo "Starting"
 
 echo -n "Getting data..."
