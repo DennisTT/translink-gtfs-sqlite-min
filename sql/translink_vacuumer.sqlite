@@ -1,6 +1,6 @@
 
 -- set for versioning
-PRAGMA user_version=13031100;
+PRAGMA user_version=13090200;
 --------------------yymmdd##
 
 -- drop tables we don't need
@@ -130,7 +130,7 @@ CREATE TABLE gtfs_stops (
   --zone_id    int,
   stop_code  TEXT
 );
-INSERT INTO gtfs_stops SELECT st.rowid, so.stop_desc, so.stop_lat, so.stop_lon, so.stop_code FROM gtfs_stops_old so, gtfs_stops_id_temp st WHERE so.stop_id=st.stop_id;
+INSERT INTO gtfs_stops SELECT st.rowid, so.stop_name, so.stop_lat, so.stop_lon, so.stop_code FROM gtfs_stops_old so, gtfs_stops_id_temp st WHERE so.stop_id=st.stop_id;
 DROP TABLE gtfs_stops_old;
 COMMIT;
 
@@ -170,6 +170,9 @@ DROP TABLE gtfs_stops_id_temp;
 DROP TABLE gtfs_trips_id_temp;
 DROP TABLE gtfs_blocks_id_temp;
 DROP TABLE gtfs_shapes_id_temp;
+
+-- Clean up garbage data from gtfs
+UPDATE gtfs_trip_headsigns SET trip_headsign=replace(replace(trip_headsign, '"', ''), ';', '');
 
 -- cleanup
 VACUUM;
