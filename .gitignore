@@ -1,6 +1,7 @@
 *.db
 *.db.zip
 feed/
+*.sql
 
 
 *.py[cod]
