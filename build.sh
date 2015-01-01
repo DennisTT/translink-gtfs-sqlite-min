@@ -28,6 +28,13 @@ else
     echo "already exists"
 fi
 
+echo -n "Cleaning BOM"
+for f in $FEED_FOLDER/*.txt
+do
+	vi -s setnobomb.vimscript $f
+done
+echo "done"
+
 echo -n "Generating SQL..."
 if [ ! -f $OUTPUT_SQL ]; then
     python libs/import/src/import_gtfs_to_sql.py $FEED_FOLDER/ nocopy > $OUTPUT_SQL
