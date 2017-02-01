@@ -1,9 +1,10 @@
 
 -- set for versioning
-PRAGMA user_version=13090200;
+PRAGMA user_version=17013100;
 --------------------yymmdd##
 
 -- drop tables we don't need
+DROP TABLE if exists gtfs_bikes_allowed;
 DROP TABLE if exists gtfs_directions;
 DROP TABLE if exists gtfs_fare_attributes;
 DROP TABLE if exists gtfs_fare_rules;
@@ -14,6 +15,8 @@ DROP TABLE if exists gtfs_payment_methods;
 DROP TABLE if exists gtfs_pickup_dropoff_types;
 DROP TABLE if exists gtfs_route_types;
 DROP TABLE if exists gtfs_transfer_types;
+DROP TABLE if exists gtfs_wheelchair_accessible;
+DROP TABLE if exists gtfs_wheelchair_boardings;
 DROP TABLE if exists service_combinations;
 DROP TABLE if exists service_combo_ids;
 
