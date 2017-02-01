@@ -1,6 +1,6 @@
 #!/bin/bash
 
-FEED_URL="http://mapexport.translink.bc.ca/current/google_transit.zip"
+FEED_URL="http://ns.translink.ca/gtfs/google_transit.zip"
 FEED_FOLDER="feed"
 OUTPUT_SQL="translink_gtfs.sql"
 OUTPUT_DB="translink_gtfs.db"
