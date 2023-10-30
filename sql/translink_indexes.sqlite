@@ -1,0 +1,4 @@
+CREATE INDEX `calendar_dates_date` ON `gtfs_calendar_dates` ( `date` );
+CREATE INDEX `shapes_id` ON `gtfs_shapes` ( `shape_id` );
+CREATE INDEX `stop_times_trip` ON `gtfs_stop_times` ( `trip_id` );
+CREATE INDEX `trips_block` ON `gtfs_trips` ( `block_id` );

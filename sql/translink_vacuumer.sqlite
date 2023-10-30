@@ -112,6 +112,7 @@ CREATE TABLE gtfs_stop_times (
   departure_time INTEGER, -- CHECK (departure_time LIKE '__:__:__'),
   stop_id INTEGER , --REFERENCES gtfs_stops(stop_id),
   stop_sequence INTEGER NOT NULL, --NOT NULL,
+  shape_dist_traveled REAL,
   --pickup_type   int , --REFERENCES gtfs_pickup_dropoff_types(type_id),
   --drop_off_type int , --REFERENCES gtfs_pickup_dropoff_types(type_id),
 
@@ -119,7 +120,7 @@ CREATE TABLE gtfs_stop_times (
   FOREIGN KEY (stop_id) REFERENCES gtfs_stops(stop_id)
   --CHECK (departure_time LIKE '__:__:__')
 );
-INSERT INTO gtfs_stop_times SELECT tt.rowid, (CAST(SUBSTR(so.departure_time, 1, 2) as INTEGER)*3600 + CAST(SUBSTR(so.departure_time, 4, 2) as INTEGER)*60 + CAST(SUBSTR(so.departure_time, 7, 2) as INTEGER)), st.rowid, so.stop_sequence FROM gtfs_stop_times_old so, gtfs_trips_id_temp tt, gtfs_stops_id_temp st WHERE so.trip_id=tt.trip_id AND so.stop_id=st.stop_id;
+INSERT INTO gtfs_stop_times SELECT tt.rowid, (CAST(SUBSTR(so.departure_time, 1, 2) as INTEGER)*3600 + CAST(SUBSTR(so.departure_time, 4, 2) as INTEGER)*60 + CAST(SUBSTR(so.departure_time, 7, 2) as INTEGER)), st.rowid, so.stop_sequence, so.shape_dist_traveled FROM gtfs_stop_times_old so, gtfs_trips_id_temp tt, gtfs_stops_id_temp st WHERE so.trip_id=tt.trip_id AND so.stop_id=st.stop_id;
 DROP TABLE gtfs_stop_times_old;
 COMMIT;
 
